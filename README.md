@@ -30,7 +30,7 @@ You do not need to install anything locally to run the app in production. Use Cl
    ```
 
 6. Set the Worker `ALLOWED_ORIGIN` environment variable to the exact deployed frontend origin, such as `https://your-pages-site.pages.dev`.
-7. Open the deployed frontend URL in a browser and confirm the model selectors load.
+7. Test the Worker backend directly with `/health` and `/models`, then open the deployed frontend URL in a browser and confirm the model selectors load.
 
 Do not put Cloudflare API tokens, provider keys, or secrets in this repository. Deployment is intentionally manual and cloud-based; this project does not require local installation to run.
 

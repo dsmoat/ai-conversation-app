@@ -26,7 +26,8 @@ const AGENT_B_SYSTEM_PROMPT = `You are Agent B, a thoughtful skeptic who challen
 function getAllowedOrigin(request, env) {
   const requestOrigin = request.headers.get("Origin");
   const configuredOrigin = env.ALLOWED_ORIGIN || "*";
-  if (configuredOrigin === "*") return requestOrigin || "*";
+  if (!requestOrigin) return configuredOrigin === "*" ? "*" : configuredOrigin;
+  if (configuredOrigin === "*") return requestOrigin;
   return requestOrigin === configuredOrigin ? requestOrigin : null;
 }
 function corsHeaders(request, env, contentType = "application/json; charset=utf-8") {

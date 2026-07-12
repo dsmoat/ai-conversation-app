@@ -102,3 +102,16 @@ test("model output is never rendered through innerHTML", async () => {
   assert.doesNotMatch(js, /innerHTML/);
   assert.match(js, /createTextNode\(content\)/);
 });
+
+
+test("direct browser requests without Origin can read health and models", async () => {
+  const health = await worker.fetch(new Request("https://worker.test/health"), env);
+  assert.equal(health.status, 200);
+  assert.deepEqual(await health.json(), { ok: true });
+
+  const models = await worker.fetch(new Request("https://worker.test/models"), env);
+  assert.equal(models.status, 200);
+  const data = await models.json();
+  assert.ok(Array.isArray(data.models));
+  assert.ok(data.models.length > 0);
+});
