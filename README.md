@@ -1,16 +1,38 @@
 # AI Conversation App
 
-A browser-only frontend plus Cloudflare Worker backend where two hard-coded AI agents discuss a user-provided topic. Responses stream from Cloudflare Workers AI through the Worker to the browser as each agent generates text.
+A cloud-hosted browser application plus Cloudflare Worker backend where two hard-coded AI agents discuss a user-provided topic. Responses stream from Cloudflare Workers AI through the Worker to the browser as each agent generates text.
 
 ## Files
 
-The initial application is intentionally small:
+The application is intentionally small:
 
 - `index.html` — accessible browser UI.
 - `styles.css` — responsive layout and focus styles.
 - `script.js` — model loading, streamed `fetch()` handling, and safe transcript rendering.
 - `backend/worker.js` — Cloudflare Worker routes, CORS, model allowlist, and Workers AI orchestration.
 - `wrangler.toml` — Worker configuration with an AI binding.
+
+## Cloud-only deployment path
+
+You do not need to install anything locally to run the app in production. Use Cloudflare's hosted dashboards and Git integration:
+
+1. Put this repository in GitHub or another Git provider supported by Cloudflare.
+2. In Cloudflare, create a Worker from the repository and use `backend/worker.js` as the Worker entry point.
+3. Ensure the Worker has a Workers AI binding named `AI`; the repository's `wrangler.toml` documents that binding.
+4. Deploy the static frontend files (`index.html`, `styles.css`, and `script.js`) with Cloudflare Pages or another static host.
+5. Configure the frontend's Worker URL. If the frontend and Worker are on the same origin, no extra JavaScript configuration is needed because `script.js` defaults to `window.location.origin`. If the Worker is on a different origin, define `window.WORKER_URL` before `script.js` loads, for example:
+
+   ```html
+   <script>
+     window.WORKER_URL = "https://your-worker.your-account.workers.dev";
+   </script>
+   <script src="script.js"></script>
+   ```
+
+6. Set the Worker `ALLOWED_ORIGIN` environment variable to the exact deployed frontend origin, such as `https://your-pages-site.pages.dev`.
+7. Open the deployed frontend URL in a browser and confirm the model selectors load.
+
+Do not put Cloudflare API tokens, provider keys, or secrets in this repository. Deployment is intentionally manual and cloud-based; this project does not require local installation to run.
 
 ## How streaming works
 
@@ -45,17 +67,6 @@ Cloudflare's model catalog changes. Review the allowlist in `backend/worker.js` 
 - Larger output limits increase execution time and Workers AI usage.
 - The Worker keeps the topic and most recent transcript messages when building each model request; oldest transcript messages are omitted first if truncation is required.
 
-## Local development
-
-1. Install Node.js 20+.
-2. Install Wrangler if needed: `npm install --save-dev wrangler`.
-3. Set the allowed browser origin for deployed use with an `ALLOWED_ORIGIN` Worker variable, for example `https://your-site.example`.
-4. Run the Worker locally: `npx wrangler dev`.
-5. Serve the static frontend with any local static server, for example `python3 -m http.server 8080`.
-6. If the Worker is not at `http://localhost:8787`, set `window.WORKER_URL` before loading `script.js` or edit the local constant for your environment.
-
-Do not put Cloudflare API tokens, provider keys, or secrets in this repository. Deployment is intentionally manual; this project does not deploy automatically.
-
 ## Worker routes
 
 - `GET /health` — health check JSON.
@@ -65,9 +76,9 @@ Do not put Cloudflare API tokens, provider keys, or secrets in this repository. 
 
 Unsupported methods return HTTP 405. Unknown routes return HTTP 404. Normal JSON responses and streamed responses include CORS headers.
 
-## Testing
+## Optional checks
 
-Run:
+Automated checks are available for maintainers who choose to run them in a development environment or CI:
 
 ```bash
 npm test

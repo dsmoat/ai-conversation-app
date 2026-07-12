@@ -1,4 +1,4 @@
-const WORKER_URL = window.WORKER_URL || "http://localhost:8787";
+const WORKER_URL = window.WORKER_URL || window.location.origin;
 const INACTIVITY_TIMEOUT_MS = 45000;
 
 const form = document.querySelector("#debate-form");
