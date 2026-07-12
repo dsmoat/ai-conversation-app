@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Conversation App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <h1>AI Conversation App</h1>
+      <p>Choose a topic and let two hard-coded AI agents discuss it in real time.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="controls-heading">
+      <h2 id="controls-heading">Conversation controls</h2>
+      <form id="debate-form">
+        <div class="field">
+          <label for="topic">Topic</label>
+          <textarea id="topic" name="topic" rows="4" maxlength="500" required placeholder="Should companies adopt a four-day workweek?"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="rounds">Number of rounds</label>
+          <select id="rounds" name="rounds" required>
+            <option value="1">1 round</option>
+            <option value="2" selected>2 rounds</option>
+            <option value="3">3 rounds</option>
+          </select>
+        </div>
+
+        <div class="model-grid">
+          <div class="field">
+            <label for="agent-a-model">Agent A model</label>
+            <select id="agent-a-model" name="agentAModel" aria-describedby="agent-a-model-help" disabled required></select>
+            <p id="agent-a-model-help" class="help-text">Select an approved Cloudflare Workers AI chat model for Agent A.</p>
+          </div>
+
+          <div class="field">
+            <label for="agent-b-model">Agent B model</label>
+            <select id="agent-b-model" name="agentBModel" aria-describedby="agent-b-model-help" disabled required></select>
+            <p id="agent-b-model-help" class="help-text">Select an approved Cloudflare Workers AI chat model for Agent B.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="start-button" type="submit" disabled>Start conversation</button>
+          <button id="clear-button" type="button">Clear conversation</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel" aria-live="polite" aria-atomic="false">
+      <div class="status-row">
+        <h2>Transcript</h2>
+        <p id="status" role="status">Loading available models...</p>
+      </div>
+      <p id="error" class="error" role="alert"></p>
+      <div id="transcript" class="transcript" aria-label="Conversation transcript"></div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
