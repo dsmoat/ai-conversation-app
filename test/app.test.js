@@ -81,8 +81,8 @@ test("partial output remains visible after streaming failure", async () => {
 test("Start button and selectors restoration logic exists", async () => {
   const js = await readFile("script.js", "utf8");
   assert.match(js, /finally\s*{[\s\S]*setRunning\(false\)/);
-  assert.match(js, /agentAModelSelect\.disabled = nextRunning/);
-  assert.match(js, /agentBModelSelect\.disabled = nextRunning/);
+  assert.match(js, /agentAModelSelect\.disabled = disabled/);
+  assert.match(js, /agentBModelSelect\.disabled = disabled/);
 });
 
 test("responses can exceed old 200-token limit and never request more than 1000 tokens", async () => {
@@ -114,4 +114,43 @@ test("direct browser requests without Origin can read health and models", async 
   const data = await models.json();
   assert.ok(Array.isArray(data.models));
   assert.ok(data.models.length > 0);
+});
+
+
+test("new controls support language theme prompts rounds temperature reasoning and counts", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("script.js", "utf8");
+  assert.match(html, /id="language-select"/);
+  assert.match(html, /id="theme-toggle"/);
+  assert.match(html, /id="agent-a-prompt"/);
+  assert.match(html, /id="agent-b-prompt"/);
+  assert.match(html, /id="temperature"/);
+  assert.match(html, /id="reasoning-mode"/);
+  assert.match(html, /type="number"[^>]*value="3"/);
+  assert.match(js, /agentASystemPrompt/);
+  assert.match(js, /agentBSystemPrompt/);
+  assert.match(js, /temperature/);
+  assert.match(js, /reasoningMode/);
+  assert.match(js, /characterCount/);
+});
+
+test("models endpoint includes GPT-OSS and reasoning metadata", async () => {
+  const response = await worker.fetch(req("/models"), env);
+  const data = await response.json();
+  assert.ok(data.models.some((model) => model.id === "@cf/openai/gpt-oss-120b"));
+  assert.ok(data.models.some((model) => model.id === "@cf/openai/gpt-oss-20b"));
+  const gptOss = data.models.find((model) => model.id === "@cf/openai/gpt-oss-120b");
+  assert.equal(gptOss.supportsReasoning, true);
+  assert.ok(gptOss.reasoningModes.includes("medium"));
+});
+
+test("debate sends temperature and reasoning only to supported models", async () => {
+  env.AI.calls = [];
+  const response = await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Reasoning", rounds: 1, agentAModel: "@cf/openai/gpt-oss-120b", agentBModel: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", temperature: 1.2, reasoningMode: "high", agentASystemPrompt: "Custom A prompt with enough context.", agentBSystemPrompt: "Custom B prompt with enough context." }) }), env);
+  await response.text();
+  assert.equal(env.AI.calls[0].payload.temperature, 1.2);
+  assert.deepEqual(env.AI.calls[0].payload.reasoning, { effort: "high" });
+  assert.equal(env.AI.calls[1].payload.temperature, 1.2);
+  assert.equal(env.AI.calls[1].payload.reasoning, undefined);
+  assert.equal(env.AI.calls[0].payload.messages[0].content, "Custom A prompt with enough context.");
 });

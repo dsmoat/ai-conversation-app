@@ -1,6 +1,6 @@
 # AI Conversation App
 
-A cloud-hosted browser application plus Cloudflare Worker backend where two hard-coded AI agents discuss a user-provided topic. Responses stream from Cloudflare Workers AI through the Worker to the browser as each agent generates text.
+A cloud-hosted browser application plus Cloudflare Worker backend where two configurable AI agents discuss a user-provided topic. Responses stream from Cloudflare Workers AI through the Worker to the browser as each agent generates text, with English/Japanese UI text, theme switching, prompt controls, temperature, and reasoning settings.
 
 ## Files
 
@@ -8,7 +8,7 @@ The application is intentionally small:
 
 - `index.html` — accessible browser UI.
 - `styles.css` — responsive layout and focus styles.
-- `script.js` — model loading, streamed `fetch()` handling, and safe transcript rendering.
+- `script.js` — model loading, bilingual UI text, theme switching, streamed `fetch()` handling, character/reasoning statistics, and safe transcript rendering.
 - `backend/worker.js` — Cloudflare Worker routes, CORS, model allowlist, and Workers AI orchestration.
 - `wrangler.toml` — Worker configuration with an AI binding.
 
@@ -51,7 +51,7 @@ Agent orchestration remains sequential: Agent A streams and completes, the compl
 
 ## Model selection and security
 
-Models are loaded from `GET /models`. The Worker uses a server-side `SUPPORTED_MODELS` allowlist and returns only the IDs and friendly names needed by the frontend. The frontend validates selected values against the loaded list, and the backend validates them again against `SUPPORTED_MODELS` before calling `env.AI.run()`.
+Models are loaded from `GET /models`. The Worker uses a server-side `SUPPORTED_MODELS` allowlist and returns the IDs, friendly names, and reasoning capability metadata needed by the frontend. GPT-OSS models are included. The frontend validates selected values against the loaded list, and the backend validates them again against `SUPPORTED_MODELS` before calling `env.AI.run()`.
 
 The frontend cannot submit arbitrary model IDs, external provider URLs, API keys, custom system prompts, or custom token limits. Editing the browser request to use an unapproved model returns HTTP 400.
 
@@ -66,6 +66,9 @@ Cloudflare's model catalog changes. Review the allowlist in `backend/worker.js` 
 - The 1,000-token maximum is passed to Workers AI through `max_tokens: 1000`.
 - Larger output limits increase execution time and Workers AI usage.
 - The Worker keeps the topic and most recent transcript messages when building each model request; oldest transcript messages are omitted first if truncation is required.
+- Users can choose any positive integer number of rounds; the default is 3.
+- Users can edit the Agent A and Agent B system prompts, adjust temperature from 0 to 2, and choose a reasoning mode. Reasoning settings are only sent to models marked as reasoning-capable.
+- The frontend displays streamed character counts for each response and shows reasoning-token counts when the model reports them.
 
 ## Worker routes
 
@@ -85,7 +88,7 @@ npm test
 npm run check:syntax
 ```
 
-The test suite checks model-selector loading, same-model and different-model conversations, arbitrary model rejection, exclusion of deprecated or non-chat model categories, incremental Agent A output, Agent B ordering, status events, partial output on streaming failure, UI restoration logic, the 1,000-token request limit, `/models` CORS rejection, and safe text-only rendering instead of `innerHTML`.
+The test suite checks model-selector loading, GPT-OSS availability, reasoning metadata, same-model and different-model conversations, arbitrary model rejection, exclusion of deprecated or non-chat model categories, incremental Agent A output, Agent B ordering, status events, partial output on streaming failure, UI restoration logic, the 1,000-token request limit, temperature/reasoning request settings, `/models` CORS rejection, bilingual/theme controls, prompt controls, character counts, and safe text-only rendering instead of `innerHTML`.
 
 ## Future improvements
 
