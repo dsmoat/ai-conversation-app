@@ -20,7 +20,7 @@ You do not need to install anything locally to run the app in production. Use Cl
 2. In Cloudflare, create a Worker from the repository and use `backend/worker.js` as the Worker entry point.
 3. Ensure the Worker has a Workers AI binding named `AI`; the repository's `wrangler.toml` documents that binding.
 4. Deploy the static frontend files (`index.html`, `styles.css`, and `script.js`) with Cloudflare Pages or another static host.
-5. Configure the frontend's Worker URL. If the frontend and Worker are on the same origin, no extra JavaScript configuration is needed because `script.js` defaults to `window.location.origin`. If the Worker is on a different origin, define `window.WORKER_URL` before `script.js` loads, for example:
+5. Configure the frontend's Worker URL. This repository is currently configured for the deployed Worker at `https://ai-conversation-app.kanglou-soon.workers.dev`. If you deploy your own Worker URL, update the `window.WORKER_URL` snippet in `index.html`. If the frontend and Worker are on the same origin, the snippet can be removed because `script.js` defaults to `window.location.origin`.
 
    ```html
    <script>
@@ -29,7 +29,7 @@ You do not need to install anything locally to run the app in production. Use Cl
    <script src="script.js"></script>
    ```
 
-6. Set the Worker `ALLOWED_ORIGIN` environment variable to the exact deployed frontend origin, such as `https://your-pages-site.pages.dev`.
+6. Keep the Worker `ALLOWED_ORIGIN` value aligned with the exact deployed frontend origin. This repository currently persists `https://dsmoat.github.io` in `wrangler.toml` so Cloudflare redeploys do not remove the GitHub Pages origin.
 7. Test the Worker backend directly with `/health` and `/models`, then open the deployed frontend URL in a browser and confirm the model selectors load.
 
 Do not put Cloudflare API tokens, provider keys, or secrets in this repository. Deployment is intentionally manual and cloud-based; this project does not require local installation to run.
