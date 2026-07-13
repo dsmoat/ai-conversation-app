@@ -1,6 +1,6 @@
 # AI Conversation App
 
-A cloud-hosted browser application plus Cloudflare Worker backend where two configurable AI agents discuss a user-provided topic. Responses stream from Cloudflare Workers AI through the Worker to the browser as each agent generates text, with English/Japanese UI text, theme switching, prompt controls, temperature, and reasoning settings.
+A cloud-hosted browser application plus Cloudflare Worker backend where one configurable AI agent can answer normally, or multiple configurable agents can run a structured research discussion. Responses stream from Cloudflare Workers AI through the Worker to the browser with English/Japanese UI text, theme switching, per-agent roles/objectives, per-agent models, temperature, reasoning settings, and a final evaluator synthesis.
 
 ## Files
 
@@ -8,7 +8,7 @@ The application is intentionally small:
 
 - `index.html` — accessible browser UI.
 - `styles.css` — responsive layout and focus styles.
-- `script.js` — model loading, bilingual UI text, theme switching, streamed `fetch()` handling, character/reasoning statistics, and safe transcript rendering.
+- `script.js` — model loading, dynamic add/remove agent controls, bilingual UI text, theme switching, streamed `fetch()` handling, character/reasoning statistics, and safe transcript rendering.
 - `backend/worker.js` — Cloudflare Worker routes, CORS, model allowlist, and Workers AI orchestration.
 - `wrangler.toml` — Worker configuration with an AI binding.
 
@@ -66,8 +66,11 @@ Cloudflare's model catalog changes. Review the allowlist in `backend/worker.js` 
 - The 1,000-token maximum is passed to Workers AI through `max_tokens: 1000`.
 - Larger output limits increase execution time and Workers AI usage.
 - The Worker keeps the topic and most recent transcript messages when building each model request; oldest transcript messages are omitted first if truncation is required.
-- Users can choose any positive integer number of rounds; the default is 3.
-- Users can edit the Agent A and Agent B system prompts, adjust temperature from 0 to 2, and choose a reasoning mode. Reasoning settings are only sent to models marked as reasoning-capable.
+- One agent is used by default for a normal user-to-agent conversation; add/remove buttons enable multi-agent discussions.
+- Each agent has a distinct name, role, objective, model, temperature, reasoning mode, and reasoning-token budget. Unsupported reasoning settings are disabled automatically based on model metadata.
+- Multi-agent runs separate exploration, evaluation, revision, and final synthesis. The final evaluator assesses accuracy, depth, novelty, and practical usefulness and produces conclusions, evidence, disagreements, recommendations, limitations, and next steps.
+- Agent instructions require concise, relevant, fact-based responses; citations or evidence for verifiable claims when available; unsupported claims labeled as assumptions, inferences, or uncertainties; competing hypotheses; supporting evidence and counterevidence; useful analogies; and shared records of facts, sources, assumptions, disputes, and unknowns.
+- Users can include uploaded-document text, URLs, API notes, calculator results, code output, or other tool context in the topic field. The app does not secretly use external API keys.
 - The frontend displays streamed character counts for each response and shows reasoning-token counts when the model reports them.
 
 ## Worker routes
@@ -88,7 +91,7 @@ npm test
 npm run check:syntax
 ```
 
-The test suite checks model-selector loading, GPT-OSS availability, reasoning metadata, same-model and different-model conversations, arbitrary model rejection, exclusion of deprecated or non-chat model categories, incremental Agent A output, Agent B ordering, status events, partial output on streaming failure, UI restoration logic, the 1,000-token request limit, temperature/reasoning request settings, `/models` CORS rejection, bilingual/theme controls, prompt controls, character counts, and safe text-only rendering instead of `innerHTML`.
+The test suite checks dynamic agent controls, GPT-OSS availability, reasoning metadata and budgets, one-agent default mode, multi-agent ordering, final evaluator output, arbitrary model rejection, streamed counts, text-only token rendering, CORS rejection, and visible per-agent role/objective/temperature/reasoning controls.
 
 ## Future improvements
 
