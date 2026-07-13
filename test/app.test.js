@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import worker, { SUPPORTED_MODELS } from "../backend/worker.js";
+const env = { ALLOWED_ORIGIN: "https://example.com", AI: { calls: [], async run(model, payload) { this.calls.push({ model, payload }); return new Response('data: {"response":"This streamed response contains enough substantive words to pass the response safeguard."}\n\ndata: {"usage":{"output_tokens_details":{"reasoning_tokens":7}}}\n\ndata: [DONE]\n\n'); } } };
+function req(path, init = {}) { return new Request(`https://worker.test${path}`, { headers: { Origin: "https://example.com", ...(init.headers || {}) }, ...init }); }
+
+test("frontend has dynamic agent controls and cloud Worker URL", async () => { const html = await readFile("index.html", "utf8"); assert.match(html, /id="add-agent"/); assert.match(html, /id="remove-agent"/); assert.match(html, /id="agents-list"/); assert.match(html, /window\.WORKER_URL="https:\/\/ai-conversation-app\.kanglou-soon\.workers\.dev"/); });
+test("models endpoint returns GPT-OSS, defaults, and reasoning metadata", async () => { const response = await worker.fetch(req("/models"), env); const data = await response.json(); assert.ok(data.models.some((model) => model.id === "@cf/openai/gpt-oss-120b")); assert.ok(data.models.some((model) => model.supportsReasoningBudget)); assert.equal(data.defaults.agents.length, 1); });
+test("one agent is the default conversation mode plus final evaluator", async () => { env.AI.calls = []; const response = await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Default agent", rounds: 1 }) }), env); const text = await response.text(); assert.equal(response.status, 200); assert.ok(text.includes('"agent":"Agent 1"')); assert.ok(text.includes('"agent":"Final evaluator"')); assert.equal(env.AI.calls.length, 2); });
+test("multi-agent discussions preserve order and support critic role", async () => { env.AI.calls = []; const agents = [{ name: "Researcher", role: "Researcher", objective: "Find evidence", model: SUPPORTED_MODELS[0].id, temperature: 0.2, reasoningMode: "high", reasoningBudget: 1024 }, { name: "Critic", role: "Critic / red-team reviewer", objective: "Find flaws", model: SUPPORTED_MODELS[13].id, temperature: 1.1, reasoningMode: "off", reasoningBudget: 0 }]; const response = await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Multi", rounds: 1, agents }) }), env); const text = await response.text(); assert.ok(text.indexOf('"agent":"Researcher"') < text.indexOf('"agent":"Critic"')); assert.ok(text.includes("final synthesis")); assert.deepEqual(env.AI.calls[0].payload.reasoning, { effort: "high", max_tokens: 1024 }); assert.equal(env.AI.calls[1].payload.reasoning, undefined); assert.equal(env.AI.calls[1].payload.temperature, 1.1); });
+test("arbitrary dynamic model IDs are rejected", async () => { const response = await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Reject", rounds: 1, agents: [{ ...{ name: "Bad", role: "Bad", objective: "Bad" }, model: "@cf/not/real" }] }) }), env); assert.equal(response.status, 400); });
+test("stream exposes character and reasoning token counts", async () => { const response = await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Counts", rounds: 1 }) }), env); const text = await response.text(); assert.match(text, /characterCount/); assert.match(text, /reasoningTokens/); });
+test("script uses streamed fetch and text-only token rendering", async () => { const js = await readFile("script.js", "utf8"); assert.match(js, /response\.body\.getReader/); assert.match(js, /document\.createTextNode\(content\)/); assert.match(js, /collectAgents/); });
+test("unsupported origins are rejected but direct checks work", async () => { const rejected = await worker.fetch(new Request("https://worker.test/models", { headers: { Origin: "https://evil.example" } }), env); assert.equal(rejected.status, 403); const direct = await worker.fetch(new Request("https://worker.test/health"), env); assert.equal(direct.status, 200); });
+test("syntax-visible controls include role objective temperature reasoning budget", async () => { const js = await readFile("script.js", "utf8"); assert.match(js, /agent-role/); assert.match(js, /agent-objective/); assert.match(js, /agent-temperature/); assert.match(js, /agent-reasoning/); assert.match(js, /agent-budget/); assert.match(js, /Unsupported for this model/); });
+
+
+test("markdown preview collapse and agent drawer features are present", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("script.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(html, /id="agents-toggle"/);
+  assert.match(html, /id="agents-panel"/);
+  assert.match(html, /id="agents-resizer"/);
+  assert.match(js, /renderMarkdown/);
+  assert.match(js, /collapseCard/);
+  assert.match(js, /Show more/);
+  assert.match(js, /agent-max-length/);
+  assert.match(css, /\.agents-panel/);
+  assert.match(css, /\.message-card\.collapsed/);
+});
+
+test("backend prompts include conclusion mode and response length requirements", async () => {
+  env.AI.calls = [];
+  const agents = [{ name: "A", role: "Researcher", objective: "Find facts", model: SUPPORTED_MODELS[0].id, maxResponseChars: 900, reasoningMode: "high", reasoningBudget: 256 }];
+  await (await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Prompt", rounds: 2, agents }) }), env)).text();
+  const system = env.AI.calls[0].payload.messages[0].content;
+  const user = env.AI.calls[0].payload.messages[1].content;
+  assert.match(system, /Maximum response length: 900 characters/);
+  assert.ok(env.AI.calls.some((call) => call.payload.messages[0].content.includes("Main conclusion")));
+  assert.match(user, /Current turn:/);
+  assert.ok(env.AI.calls.some((call) => call.payload.messages[1].content.includes("conclusion mode")));
+});
