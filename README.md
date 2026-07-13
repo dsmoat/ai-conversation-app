@@ -8,7 +8,7 @@ The application is intentionally small:
 
 - `index.html` — accessible browser UI.
 - `styles.css` — responsive layout and focus styles.
-- `script.js` — model loading, dynamic add/remove agent controls, bilingual UI text, theme switching, streamed `fetch()` handling, character/reasoning statistics, and safe transcript rendering.
+- `script.js` — model loading, dynamic add/remove agent drawer controls, bilingual UI text, theme switching, Markdown rendering, collapsible streamed previews, character/reasoning statistics, and safe transcript rendering.
 - `backend/worker.js` — Cloudflare Worker routes, CORS, model allowlist, and Workers AI orchestration.
 - `wrangler.toml` — Worker configuration with an AI binding.
 
@@ -67,11 +67,11 @@ Cloudflare's model catalog changes. Review the allowlist in `backend/worker.js` 
 - Larger output limits increase execution time and Workers AI usage.
 - The Worker keeps the topic and most recent transcript messages when building each model request; oldest transcript messages are omitted first if truncation is required.
 - One agent is used by default for a normal user-to-agent conversation; add/remove buttons enable multi-agent discussions.
-- Each agent has a distinct name, role, objective, model, temperature, reasoning mode, and reasoning-token budget. Unsupported reasoning settings are disabled automatically based on model metadata.
+- Each agent has a distinct name, role, objective, model, temperature, reasoning mode, reasoning-token budget, and maximum response-length setting. Unsupported reasoning settings are disabled automatically based on model metadata. Agent creation, deletion, and configuration live in an Agents panel that remembers whether it was open, is a fixed resizable sidebar on desktop, and an overlay drawer on mobile.
 - Multi-agent runs separate exploration, evaluation, revision, and final synthesis. The final evaluator assesses accuracy, depth, novelty, and practical usefulness and produces conclusions, evidence, disagreements, recommendations, limitations, and next steps.
 - Agent instructions require concise, relevant, fact-based responses; citations or evidence for verifiable claims when available; unsupported claims labeled as assumptions, inferences, or uncertainties; competing hypotheses; supporting evidence and counterevidence; useful analogies; and shared records of facts, sources, assumptions, disputes, and unknowns.
 - Users can include uploaded-document text, URLs, API notes, calculator results, code output, or other tool context in the topic field. The app does not secretly use external API keys.
-- The frontend displays streamed character counts for each response and shows reasoning-token counts when the model reports them.
+- The frontend renders Markdown into safe DOM nodes, keeps the latest response expanded, automatically collapses older responses, provides Show more/Collapse controls, and displays streamed character counts plus reasoning-token counts when the model reports them. Detailed reasoning/evidence/source sections are placed in expandable detail blocks when present.
 
 ## Worker routes
 

@@ -14,3 +14,31 @@ test("stream exposes character and reasoning token counts", async () => { const 
 test("script uses streamed fetch and text-only token rendering", async () => { const js = await readFile("script.js", "utf8"); assert.match(js, /response\.body\.getReader/); assert.match(js, /document\.createTextNode\(content\)/); assert.match(js, /collectAgents/); });
 test("unsupported origins are rejected but direct checks work", async () => { const rejected = await worker.fetch(new Request("https://worker.test/models", { headers: { Origin: "https://evil.example" } }), env); assert.equal(rejected.status, 403); const direct = await worker.fetch(new Request("https://worker.test/health"), env); assert.equal(direct.status, 200); });
 test("syntax-visible controls include role objective temperature reasoning budget", async () => { const js = await readFile("script.js", "utf8"); assert.match(js, /agent-role/); assert.match(js, /agent-objective/); assert.match(js, /agent-temperature/); assert.match(js, /agent-reasoning/); assert.match(js, /agent-budget/); assert.match(js, /Unsupported for this model/); });
+
+
+test("markdown preview collapse and agent drawer features are present", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("script.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(html, /id="agents-toggle"/);
+  assert.match(html, /id="agents-panel"/);
+  assert.match(html, /id="agents-resizer"/);
+  assert.match(js, /renderMarkdown/);
+  assert.match(js, /collapseCard/);
+  assert.match(js, /Show more/);
+  assert.match(js, /agent-max-length/);
+  assert.match(css, /\.agents-panel/);
+  assert.match(css, /\.message-card\.collapsed/);
+});
+
+test("backend prompts include conclusion mode and response length requirements", async () => {
+  env.AI.calls = [];
+  const agents = [{ name: "A", role: "Researcher", objective: "Find facts", model: SUPPORTED_MODELS[0].id, maxResponseChars: 900, reasoningMode: "high", reasoningBudget: 256 }];
+  await (await worker.fetch(req("/debate", { method: "POST", body: JSON.stringify({ topic: "Prompt", rounds: 2, agents }) }), env)).text();
+  const system = env.AI.calls[0].payload.messages[0].content;
+  const user = env.AI.calls[0].payload.messages[1].content;
+  assert.match(system, /Maximum response length: 900 characters/);
+  assert.ok(env.AI.calls.some((call) => call.payload.messages[0].content.includes("Main conclusion")));
+  assert.match(user, /Current turn:/);
+  assert.ok(env.AI.calls.some((call) => call.payload.messages[1].content.includes("conclusion mode")));
+});
